@@ -52,13 +52,13 @@ function draw() {
             p.update();
             p.draw();
         });
-        launch();
     });
+    launch();
 }
 
 function drawGround() {
     fill('green');
-    let edge = 1000;
+    const edge = 1000;
     pushed(() => {
         translate(0, -1, 0);
         box(edge, 1, edge);
@@ -93,6 +93,4 @@ function translateAndScaleWorld(block) {
     });
 }
 
-function secs() {
-    return millis() / 1000;
-}
+const secs = () => millis() / 1000;
