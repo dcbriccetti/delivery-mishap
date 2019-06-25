@@ -1,11 +1,18 @@
+let noiseX = 0;
+
+/** Returns scaled, shifted Perlin noise at the current x (noiseX) and the specified y position */
+const pn = (y, from, to) => noise(noiseX, y) * (to - from) + from;
+
 class Particle {
     constructor() {
         // Units are metric: m, m/s, m/s², etc.
-        this.pos     = createVector(0, 0, 0);
-        this.vel     = createVector(random(20) - 5, 20 + random(30), -random(30));
-        this.accel   = createVector(0, -9.81, 0);
-        this.rot     = createVector(0, 0, 0);
-        this.rotVel  = createVector(random(TAU * 1), 0, random(TAU * 1));
+        const cv = createVector;
+        this.pos     = cv(0, 0, 0);
+        this.vel     = cv(pn(0, -10, 40), pn(1, 10, 70), pn(2, -30, 10));
+        this.accel   = cv(0, -9.81, 0);
+        this.rot     = cv(0, 0, 0);
+        this.rotVel  = cv(pn(3, 0, TAU), 0, pn(4, 0, TAU));
+        noiseX += 0.1;
         this.lastUpdate = secs();
     }
 
@@ -24,15 +31,14 @@ class Particle {
     }
 
     draw() {
-        fill('yellow');
-        stroke('blue');
-        strokeWeight(5);
+        fill(173, 135, 98);
+        stroke('black');
         pushed(() => {
             translate(this.pos.x, this.pos.y, this.pos.z);
             rotateX(this.rot.x);
             rotateY(this.rot.y);
             rotateZ(this.rot.z);
-            box(2);  // Meters
+            box(1);  // Meters
         });
     }
 }
@@ -45,7 +51,7 @@ function setup() {
 }
 
 function draw() {
-    background('blue');
+    background(135, 206, 235);
     translateAndScaleWorld(() => {
         drawGround();
         particles.forEach(p => {
@@ -57,10 +63,10 @@ function draw() {
 }
 
 function drawGround() {
-    fill('green');
+    fill(34, 139, 34);
     const edge = 1000;
     pushed(() => {
-        translate(0, -1, 0);
+        translate(0, -1.4, 0);
         box(edge, 1, edge);
     });
 }
