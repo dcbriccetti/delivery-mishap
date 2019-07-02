@@ -4,16 +4,18 @@ let noiseX = 0;
 const pn = (y, from, to) => noise(noiseX, y) * (to - from) + from;
 
 class Particle {
-    constructor() {
+    constructor(id) {
         // Units are metric: m, m/s, m/s², etc.
         const cv = createVector;
+        this.id      = id;
         this.pos     = cv(0, 0, 0);
-        this.vel     = cv(pn(0, -10, 40), pn(1, 10, 70), pn(2, -30, 10));
+        this.vel     = cv(pn(0, -20, 30), pn(1, 10, 70), pn(2, -30, 10));
         this.accel   = cv(0, -9.81, 0);
         this.rot     = cv(0, 0, 0);
         this.rotVel  = cv(pn(3, 0, TAU), 0, pn(4, 0, TAU));
         this.color   = [random(255), random(255), random(255)];
         noiseX += 0.1;
+        this.claimed = false;
         this.lastUpdate = secs();
     }
 
@@ -47,35 +49,69 @@ class Particle {
 class Collector {
     constructor(boxes) {
         this.boxes = boxes;
-        this.pos = createVector(20, 1, -20);
+        this.pos = createVector(random(100), 1, -random(100));
+        this.targetBox = undefined;
+        this.targetBoxId = undefined;
     }
 
     update() {
-        const closest = this.boxes.reduce((a, b) => a && b ? a.pos.dist(this.pos) < b.pos.dist(this.pos) ? b : a : b, undefined);
-        if (closest) {
-            const to = p5.Vector.sub(closest.pos, this.pos).normalize();
-            this.pos.x += to.x;
-            this.pos.z += to.z;
+        if (this.pauseUntil && this.pauseUntil > secs()) return; else this.pauseUntil = undefined;
+        if (this.targetBoxId !== undefined) {
+            this.moveToward();
+        } else {
+            if (this.boxes.length) {
+                let closestBoxIndex = -1;
+                let shortestSqDist;
+                this.boxes.forEach((box, i) => {
+                    const d = p5.Vector.sub(this.boxes[i].pos, this.pos).magSq();
+                    if (! box.claimed && box.vel.y < 0 && box.pos.y < 5 && (closestBoxIndex === -1 || d < shortestSqDist)) {
+                        closestBoxIndex = i;
+                        shortestSqDist = d;
+                    }
+                });
+                if (closestBoxIndex >= 0) {
+                    this.targetBox = this.boxes[closestBoxIndex];
+                    this.targetBoxId = this.targetBox.id;
+                    this.targetBox.claimed = true;
+                    this.moveToward();
+                }
+            }
+        }
+    }
+
+    moveToward() {
+        const boxPos = this.targetBox.pos;
+        this.targetPosDirection = p5.Vector.sub(boxPos, this.pos).normalize();
+        this.pos.x += this.targetPosDirection.x;
+        this.pos.z += this.targetPosDirection.z;
+        const closestBoxPos = this.targetBox.pos;
+        const distToClosest = closestBoxPos.dist(this.pos);
+        if (distToClosest < 3) {
+            const i = this.boxes.findIndex(box => box.id === this.targetBoxId);
+            this.boxes.splice(i, 1);
+            this.pauseUntil = secs() + random(0.1);
+            this.targetBox = this.targetBoxId = undefined;
         }
     }
 
     draw() {
         noStroke();
-        fill('yellow');
+        fill(255, 255, 0, 128);
         pushed(() => {
             translate(this.pos.x, this.pos.y, this.pos.z);
-            ellipsoid(1, 2, 1);
+            cone(2, 6);
         });
     }
 }
 
 let boxes = [];
+let nextBoxId = 1;
+let collectors = [];
 let nextLaunch;
-let collector;
 
 function setup() {
     createCanvas(windowWidth - 20, windowHeight - 20, WEBGL);
-    collector = new Collector(boxes);
+    collectors = Array.from(Array(5).keys(), () => new Collector(boxes));
 }
 
 function draw() {
@@ -86,8 +122,10 @@ function draw() {
             p.update();
             p.draw();
         });
-        //collector.update();
-        //collector.draw();
+        collectors.forEach(c => {
+            c.update();
+            c.draw();
+        });
     });
     launch();
 }
@@ -102,12 +140,10 @@ function drawGround() {
 }
 
 function launch() {
-    const getNextLaunch = () => secs() + random(0.3);
+    const getNextLaunch = () => secs() + pn(6, 0.01, 0.1);
 
     if (!nextLaunch || secs() > nextLaunch) {
-        boxes.push(new Particle());
-        if (boxes.length > 1000)
-            boxes.shift();
+        boxes.push(new Particle(nextBoxId++));
         nextLaunch = getNextLaunch();
     }
 }
