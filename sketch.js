@@ -12,6 +12,7 @@ class Particle {
         this.accel   = cv(0, -9.81, 0);
         this.rot     = cv(0, 0, 0);
         this.rotVel  = cv(pn(3, 0, TAU), 0, pn(4, 0, TAU));
+        this.color   = [random(255), random(255), random(255)];
         noiseX += 0.1;
         this.lastUpdate = secs();
     }
@@ -31,7 +32,7 @@ class Particle {
     }
 
     draw() {
-        fill(173, 135, 98);
+        fill(this.color[0], this.color[1], this.color[2]);
         stroke('black');
         pushed(() => {
             translate(this.pos.x, this.pos.y, this.pos.z);
@@ -43,21 +44,50 @@ class Particle {
     }
 }
 
-let particles = [];
+class Collector {
+    constructor(boxes) {
+        this.boxes = boxes;
+        this.pos = createVector(20, 1, -20);
+    }
+
+    update() {
+        const closest = this.boxes.reduce((a, b) => a && b ? a.pos.dist(this.pos) < b.pos.dist(this.pos) ? b : a : b, undefined);
+        if (closest) {
+            const to = p5.Vector.sub(closest.pos, this.pos).normalize();
+            this.pos.x += to.x;
+            this.pos.z += to.z;
+        }
+    }
+
+    draw() {
+        noStroke();
+        fill('yellow');
+        pushed(() => {
+            translate(this.pos.x, this.pos.y, this.pos.z);
+            ellipsoid(1, 2, 1);
+        });
+    }
+}
+
+let boxes = [];
 let nextLaunch;
+let collector;
 
 function setup() {
     createCanvas(windowWidth - 20, windowHeight - 20, WEBGL);
+    collector = new Collector(boxes);
 }
 
 function draw() {
     background(135, 206, 235);
     translateAndScaleWorld(() => {
         drawGround();
-        particles.forEach(p => {
+        boxes.forEach(p => {
             p.update();
             p.draw();
         });
+        //collector.update();
+        //collector.draw();
     });
     launch();
 }
@@ -75,20 +105,20 @@ function launch() {
     const getNextLaunch = () => secs() + random(0.3);
 
     if (!nextLaunch || secs() > nextLaunch) {
-        particles.push(new Particle());
-        if (particles.length > 1000)
-            particles.shift();
+        boxes.push(new Particle());
+        if (boxes.length > 1000)
+            boxes.shift();
         nextLaunch = getNextLaunch();
     }
 }
 
-pushed = function (block) {
+pushed = (block) => {
     push();
     block();
     pop();
 };
 
-/** Places the origin at the bottom center, makes y increase going up, and scales meters to pixels */
+/** Places the origin at the bottom left, makes y increase going up, and scales meters to pixels */
 function translateAndScaleWorld(block) {
     const pixelsPerMeter = 30;
     const margin = 1.2 * pixelsPerMeter;
