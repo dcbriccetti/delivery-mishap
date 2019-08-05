@@ -51,12 +51,14 @@ class Collector {
         this.boxes = boxes;
         this.pos = createVector(random(100), 1, -random(100));
         this.targetBox = undefined;
-        this.targetBoxId = undefined;
     }
 
     update() {
-        if (this.pauseUntil && this.pauseUntil > secs()) return; else this.pauseUntil = undefined;
-        if (this.targetBoxId !== undefined) {
+        if (this.pauseUntil && this.pauseUntil > secs())
+            return;
+        this.pauseUntil = undefined;
+
+        if (this.targetBox !== undefined) {
             this.moveToward();
         } else {
             if (this.boxes.length) {
@@ -71,7 +73,6 @@ class Collector {
                 });
                 if (closestBoxIndex >= 0) {
                     this.targetBox = this.boxes[closestBoxIndex];
-                    this.targetBoxId = this.targetBox.id;
                     this.targetBox.claimed = true;
                     this.moveToward();
                 }
@@ -87,10 +88,10 @@ class Collector {
         const closestBoxPos = this.targetBox.pos;
         const distToClosest = closestBoxPos.dist(this.pos);
         if (distToClosest < 3) {
-            const i = this.boxes.findIndex(box => box.id === this.targetBoxId);
+            const i = this.boxes.findIndex(box => box.id === this.targetBox.id);
             this.boxes.splice(i, 1);
             this.pauseUntil = secs() + random(0.1);
-            this.targetBox = this.targetBoxId = undefined;
+            this.targetBox = undefined;
         }
     }
 
